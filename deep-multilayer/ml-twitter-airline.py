@@ -1,4 +1,5 @@
 # load the dataset-loader/twitter-airline loader
+exec(open("../dataset-loader/twitter-airline.py").read())
 
 import string
 import numpy as np
