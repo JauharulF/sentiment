@@ -5,7 +5,7 @@ root_dir = "../../aclImdb/"
 word_vocab = {}
 with open(root_dir + "imdb.vocab", encoding="utf-8") as fin:
     for row in fin:
-        word_vocab[row] = 0
+        word_vocab[row.strip()] = 0
 
 train_pos_list = [fname for fname in os.listdir(root_dir + "train/pos/")]
 train_neg_list = [fname for fname in os.listdir(root_dir + "train/neg/")]

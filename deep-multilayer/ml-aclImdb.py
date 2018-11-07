@@ -32,7 +32,7 @@ all_data.extend(test_data)
 # option 2: use the vocabulary given by the dataset
 for paragraph in all_data:
     for sentence in sent_tokenize(paragraph):
-        for word in word_tokenize(sentence):
+        for word in word_tokenize(sentence.lower()):
             if word in word_vocab:
                 word_vocab[word] += 1
 
@@ -53,16 +53,20 @@ train_data_pad = []
 for paragraph in train_data:
     datum = []
     for sentence in sent_tokenize(paragraph):
-        for word in word_tokenize(sentence):
+        for word in word_tokenize(sentence.lower()):
+            if word in string.punctuation:
+                continue
             datum.append(word_index[word] if word in word_index and word_index[word]<vocab_size else 2)
     train_data_pad.append(datum)
 
 # load/convert test_data based on word_index
 test_data_pad = []
-for sentence in test_data:
+for paragraph in test_data:
     datum = []
     for sentence in sent_tokenize(paragraph):
-        for word in word_tokenize(sentence):
+        for word in word_tokenize(sentence.lower()):
+            if word in string.punctuation:
+                continue
             datum.append(word_index[word] if word in word_index and word_index[word]<vocab_size else 2)
     test_data_pad.append(datum)
 
@@ -111,3 +115,48 @@ f1_score = 2 * ((precision * recall) / (precision + recall))
 
 print(num_tp, num_fp, num_tn, num_fn)
 print(accuracy, precision, recall, f1_score)
+
+# cross-check with the training data accuracy
+score_trains = [int(round(score(model=model, vocab_size=10000, sentence=sentence))) for sentence in train_data]
+
+num_fp = sum([1 if train_labels[k]==0 and score_trains[k]==1 else 0 for k,v in enumerate(train_labels)])
+num_tp = sum([1 if train_labels[k]==1 and score_trains[k]==1 else 0 for k,v in enumerate(train_labels)])
+num_tn = sum([1 if train_labels[k]==0 and score_trains[k]==0 else 0 for k,v in enumerate(train_labels)])
+num_fn = sum([1 if train_labels[k]==1 and score_trains[k]==0 else 0 for k,v in enumerate(train_labels)])
+
+accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
+precision = num_tp / (num_tp + num_fp)
+recall = num_tp / (num_tp + num_fn)
+f1_score = 2 * ((precision * recall) / (precision + recall))
+
+print(num_tp, num_fp, num_tn, num_fn)
+print(accuracy, precision, recall, f1_score)
+
+### Create ROC/AOC Graph ###
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+
+y_pred_keras = keras_model.predict(test_data_pad).ravel()
+fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
+auc_keras = auc(fpr_keras, tpr_keras)
+
+plt.figure(1)
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve')
+plt.legend(loc='best')
+plt.show()
+# Zoom in view of the upper left corner.
+plt.figure(2)
+plt.xlim(0, 0.4)
+plt.ylim(0.6, 1)
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve (zoomed in at top left)')
+plt.legend(loc='best')
+plt.show()
