@@ -98,3 +98,35 @@ accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
 precision = num_tp / (num_tp + num_fp)
 recall = num_tp / (num_tp + num_fn)
 f1_score = 2 * ((precision * recall) / (precision + recall))
+
+print(num_tp, num_fp, num_tn, num_fn)
+print(accuracy, precision, recall, f1_score)
+
+### Create ROC/AOC Graph ###
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+
+y_pred_keras = model.predict(test_data).ravel()
+fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
+auc_keras = auc(fpr_keras, tpr_keras)
+
+plt.figure(1)
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve')
+plt.legend(loc='best')
+plt.show()
+# Zoom in view of the upper left corner.
+plt.figure(2)
+plt.xlim(0, 0.4)
+plt.ylim(0.6, 1)
+plt.plot([0, 1], [0, 1], 'k--')
+plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve (zoomed in at top left)')
+plt.legend(loc='best')
+plt.show()

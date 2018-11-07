@@ -137,7 +137,7 @@ print(accuracy, precision, recall, f1_score)
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
-y_pred_keras = keras_model.predict(test_data_pad).ravel()
+y_pred_keras = model.predict(test_data_pad).ravel()
 fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
 auc_keras = auc(fpr_keras, tpr_keras)
 
