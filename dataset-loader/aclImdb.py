@@ -12,20 +12,24 @@ train_neg_list = [fname for fname in os.listdir(root_dir + "train/neg/")]
 test_pos_list  = [fname for fname in os.listdir(root_dir + "test/pos/")] 
 test_neg_list  = [fname for fname in os.listdir(root_dir + "test/neg/")] 
 
-train_data, train_labels = [], []
+train_data, train_labels, train_labels_inv = [], [], []
 for i in range(len(train_pos_list)):
     with open(root_dir + "train/pos/" + train_pos_list[i], encoding="utf-8") as fin:
         train_data.append(fin.read())
         train_labels.append(1)
+        train_labels_inv.append(0)
     with open(root_dir + "train/neg/" + train_neg_list[i], encoding="utf-8") as fin:
         train_data.append(fin.read())
         train_labels.append(0)
+        train_labels_inv.append(1)
 
-test_data, test_labels = [], []
+test_data, test_labels, test_labels_inv = [], [], []
 for i in range(len(test_pos_list)):
     with open(root_dir + "test/pos/" + test_pos_list[i], encoding="utf-8") as fin:
         test_data.append(fin.read())
         test_labels.append(1)
+        test_labels_inv.append(0)
     with open(root_dir + "test/neg/" + test_neg_list[i], encoding="utf-8") as fin:
         test_data.append(fin.read())
         test_labels.append(0)
+        test_labels_inv.append(1)

@@ -92,6 +92,21 @@ history = model.fit(partial_x_train, partial_y_train, epochs=40, batch_size=512,
 results = model.evaluate(test_data_pad, test_labels)
 print(results)
 
+# prepare model to calculate the F1-neg
+y_val = train_labels_inv[:validation_size]
+partial_y_train = train_labels_inv[validation_size:]
+
+model_inv = keras.Sequential()
+model_inv.add(keras.layers.Embedding(vocab_size, 16))
+model_inv.add(keras.layers.GlobalAveragePooling1D())
+model_inv.add(keras.layers.Dense(16, activation=tf.nn.relu))
+model_inv.add(keras.layers.Dense(1, activation=tf.nn.sigmoid))
+model_inv.summary()
+model_inv.compile(optimizer=tf.train.AdamOptimizer(), loss='binary_crossentropy', metrics=['accuracy'])
+history = model_inv.fit(partial_x_train, partial_y_train, epochs=40, batch_size=512, validation_data=(x_val, y_val), verbose=1)
+results = model_inv.evaluate(test_data_pad, test_labels_inv)
+print(results)
+
 # after training, you may use the model to predict a sentence
 # for example, score(model=model, vocab_size=10000, sentence="I love this product.")
 def score(model=None, vocab_size=None, sentence=None):
@@ -100,21 +115,6 @@ def score(model=None, vocab_size=None, sentence=None):
         sent_arr.append(word_index[word] if word in word_index and word_index[word]<vocab_size else 2)
     sent_pad = keras.preprocessing.sequence.pad_sequences([sent_arr], value=word_index["<PAD>"], padding='post', maxlen=256)
     return model.predict(sent_pad)[0][0]
-
-score_labels = [int(round(score(model=model, vocab_size=10000, sentence=sentence))) for sentence in test_data]
-
-num_fp = sum([1 if test_labels[k]==0 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
-num_tp = sum([1 if test_labels[k]==1 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
-num_tn = sum([1 if test_labels[k]==0 and score_labels[k]==0 else 0 for k,v in enumerate(test_labels)])
-num_fn = sum([1 if test_labels[k]==1 and score_labels[k]==0 else 0 for k,v in enumerate(test_labels)])
-
-accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
-precision = num_tp / (num_tp + num_fp)
-recall = num_tp / (num_tp + num_fn)
-f1_score = 2 * ((precision * recall) / (precision + recall))
-
-print(num_tp, num_fp, num_tn, num_fn)
-print(accuracy, precision, recall, f1_score)
 
 # cross-check with the training data accuracy
 score_trains = [int(round(score(model=model, vocab_size=10000, sentence=sentence))) for sentence in train_data]
@@ -132,6 +132,30 @@ f1_score = 2 * ((precision * recall) / (precision + recall))
 print(num_tp, num_fp, num_tn, num_fn)
 print(accuracy, precision, recall, f1_score)
 
+# measure the performances
+score_labels = [int(round(score(model=model, vocab_size=10000, sentence=sentence))) for sentence in test_data]
+score_labels_inv = [int(round(score(model=model_inv, vocab_size=10000, sentence=sentence))) for sentence in test_data]
+
+num_fp = sum([1 if test_labels[k]==0 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
+num_tp = sum([1 if test_labels[k]==1 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
+num_tn = sum([1 if test_labels[k]==0 and score_labels[k]==0 else 0 for k,v in enumerate(test_labels)])
+num_fn = sum([1 if test_labels[k]==1 and score_labels[k]==0 else 0 for k,v in enumerate(test_labels)])
+
+precision = num_tp / (num_tp + num_fp)
+recall = num_tp / (num_tp + num_fn)
+f1_score = 2 * ((precision * recall) / (precision + recall))
+
+precision_neg = num_tn / (num_tn + num_fn)
+recall_neg = num_tn / (num_tn + num_fp)
+f1_score_neg = 2 * ((precision_neg * recall_neg) / (precision_neg + recall_neg))
+
+accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
+print(num_tp, num_fp, num_tn, num_fn)
+print(precision, recall, f1_score)
+print(precision_neg, recall_neg, f1_score_neg)
+print(accuracy)
+
+
 ### Create ROC/AOC Graph ###
 
 import matplotlib.pyplot as plt
@@ -141,11 +165,16 @@ y_pred_keras = model.predict(test_data_pad).ravel()
 fpr_keras, tpr_keras, thresholds_keras = roc_curve(test_labels, y_pred_keras)
 auc_keras = auc(fpr_keras, tpr_keras)
 
+y_pred_inv = model_inv.predict(test_data_pad).ravel()
+fpr_inv, tpr_inv, thresholds_inv = roc_curve(test_labels_inv, y_pred_inv)
+auc_inv = auc(fpr_inv, tpr_inv)
+
 plt.figure(1)
 plt.plot([0, 1], [0, 1], 'k--')
-plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
-plt.xlabel('False positive rate')
-plt.ylabel('True positive rate')
+plt.plot(fpr_keras, tpr_keras, label='positive (area = {:.3f})'.format(auc_keras))
+plt.plot(fpr_inv, tpr_inv, label='negative (area = {:.3f})'.format(auc_inv))
+plt.xlabel('False rate')
+plt.ylabel('True rate')
 plt.title('ROC curve')
 plt.legend(loc='best')
 plt.show()
@@ -154,9 +183,10 @@ plt.figure(2)
 plt.xlim(0, 0.4)
 plt.ylim(0.6, 1)
 plt.plot([0, 1], [0, 1], 'k--')
-plt.plot(fpr_keras, tpr_keras, label='Keras (area = {:.3f})'.format(auc_keras))
-plt.xlabel('False positive rate')
-plt.ylabel('True positive rate')
+plt.plot(fpr_keras, tpr_keras, label='positive (area = {:.3f})'.format(auc_keras))
+plt.plot(fpr_inv, tpr_inv, label='negative (area = {:.3f})'.format(auc_inv))
+plt.xlabel('False rate')
+plt.ylabel('True rate')
 plt.title('ROC curve (zoomed in at top left)')
 plt.legend(loc='best')
 plt.show()
