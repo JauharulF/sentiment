@@ -3,7 +3,8 @@ import os
 from collections import defaultdict
 
 import matplotlib
-matplotlib.use('TkAgg')
+if matplotlib.get_backend() == 'MacOSX': 
+    matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 import numpy
@@ -66,8 +67,9 @@ def get_model_desc(model):
     return description
 
 def move_figure(f, x, y):
-    # backend = matplotlib.get_backend()
-    backend = 'TkAgg'
+    backend = matplotlib.get_backend()
+    if matplotlib.get_backend() == 'MacOSX': 
+        backend = 'TkAgg'
     if backend == 'TkAgg':
         f.canvas.manager.window.wm_geometry("+%d+%d" % (x, y))
     elif backend == 'WXAgg':

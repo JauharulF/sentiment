@@ -6,7 +6,7 @@ import random           # used to randomize the dataset
 import numpy as np
 
 from keras.utils import np_utils
-from keras.utils.vis_utils import plot_model
+# from keras.utils.vis_utils import plot_model
 
 from collections import Counter     # used in print_dataset_statistics
 from sklearn.model_selection import train_test_split
@@ -207,7 +207,7 @@ nn_model = build_attention_RNN(emb_matrix, classes=3, max_length=max_length, lay
                                final_layer=False, dropout_final=0.5, dropout_attention=0.5,
                                dropout_words=0.3, dropout_rnn=0.3, dropout_rnn_U=0.3)
 
-plot_model(nn_model, show_layer_names=True, show_shapes=True, to_file="model_task4_subA.png")
+# plot_model(nn_model, show_layer_names=True, show_shapes=True, to_file="model_task4_subA.png")
 
 ############################################################################
 # CALLBACKS
@@ -252,5 +252,5 @@ _callbacks.append(weights)
 class_weights = get_class_weights2(numpy.asarray(training[1]).argmax(axis=-1), smooth_factor=0)
 history = nn_model.fit(training[0], training[1], validation_data=testing, epochs=50, batch_size=50,
                        class_weight=class_weights, callbacks=_callbacks)
-pickle.dump(history.history, open("hist_task4_subA.pickle", "wb"))
+pickle.dump(history.history, open("hist_task4_subA_rnn.pickle", "wb"))
 

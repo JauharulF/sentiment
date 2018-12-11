@@ -9,8 +9,8 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from itertools import groupby
 
 word_dict = {}
-for data in train_13A + dev_13A + test_13A:
-    for word in word_tokenize(data['text']):
+for data in train_data_all + test_data_all:
+    for word in word_tokenize(data):
         if word in word_dict:
             word_dict[word] += 1
         else:
@@ -36,18 +36,14 @@ word_index["<UNK>"] = 1  # unknown
 vocab_size = 10000
 max_length = 50
 # load/convert train_data based on word_index
-train_data_pad, dev_data_pad, test_data_pad = [], [], []
+train_data_pad, test_data_pad = [], []
 for data in train_data:
     train_data_pad.append([word_index[word] if word in word_index and word_index[word]<vocab_size else 1 for word in word_tokenize(data)])
-
-for data in dev_data:
-    dev_data_pad.append([word_index[word] if word in word_index and word_index[word]<vocab_size else 1 for word in word_tokenize(data)])
 
 for data in test_data:
     test_data_pad.append([word_index[word] if word in word_index and word_index[word]<vocab_size else 1 for word in word_tokenize(data)])
 
 train_data_pad = keras.preprocessing.sequence.pad_sequences(train_data_pad, value=word_index["<PAD>"], padding='post', maxlen=max_length)
-dev_data_pad = keras.preprocessing.sequence.pad_sequences(dev_data_pad, value=word_index["<PAD>"], padding='post', maxlen=max_length)
 test_data_pad = keras.preprocessing.sequence.pad_sequences(test_data_pad, value=word_index["<PAD>"], padding='post', maxlen=max_length)
 
 # Prepare the Model
@@ -59,12 +55,23 @@ model.add(keras.layers.Dense(1, activation=tf.nn.sigmoid))
 model.summary()
 model.compile(optimizer=tf.train.AdamOptimizer(), loss='binary_crossentropy', metrics=['accuracy'])
 
-# since the validation model uses separate data provided in dataset, we don't use partial training for validation
+# define validation set from the train data
+validation_size = int(0.2 * len(train_data_pad))
+x_val = train_data_pad[:validation_size]
+partial_x_train = train_data_pad[validation_size:]
+y_val = train_labels[:validation_size]
+partial_y_train = train_labels[validation_size:]
 
-history = model.fit(train_data_pad, train_labels, epochs=40, batch_size=40, validation_data=(dev_data_pad, dev_labels), verbose=1)
+history = model.fit(partial_x_train, partial_y_train, epochs=50, batch_size=50, validation_data=(x_val, y_val), verbose=1)
 results = model.evaluate(test_data_pad, test_labels)
 print(results)
-# [0.6654395518302918, 0.691]
+# [0.6654395518302918, 0.691] 
+# [3.0843001763917757, 0.68725]
+
+# or you may try straight to test_data
+history = model.fit(train_data_pad, train_labels, epochs=50, batch_size=50, validation_data=(test_data_pad, test_labels), verbose=1)
+results = model.evaluate(test_data_pad, test_labels)
+print(results)
 
 # after training, you may use the model to predict a sentence
 # for example, score(model=model, vocab_size=10000, max_length=256, sentence="I love this product.")
@@ -76,24 +83,33 @@ def score(model=None, vocab_size=None, max_length=None, sentence=None):
     return model.predict(sent_pad)[0][0]
 
 # cross-check with the training data accuracy
-score_trains = [int(round(score(model=model, vocab_size=vocab_size, max_length=max_length, sentence=sentence))) for sentence in train_data]
+score_trains = [int(round(score(model=model, vocab_size=vocab_size, max_length=max_length, sentence=sentence))) for sentence in train_data_all]
 
 num_fp = sum([1 if train_labels[k]==0 and score_trains[k]==1 else 0 for k,v in enumerate(train_labels)])
 num_tp = sum([1 if train_labels[k]==1 and score_trains[k]==1 else 0 for k,v in enumerate(train_labels)])
 num_tn = sum([1 if train_labels[k]==0 and score_trains[k]==0 else 0 for k,v in enumerate(train_labels)])
 num_fn = sum([1 if train_labels[k]==1 and score_trains[k]==0 else 0 for k,v in enumerate(train_labels)])
 
-accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
 precision = num_tp / (num_tp + num_fp)
 recall = num_tp / (num_tp + num_fn)
 f1_score = 2 * ((precision * recall) / (precision + recall))
 
+precision_neg = num_tn / (num_tn + num_fn)
+recall_neg = num_tn / (num_tn + num_fp)
+f1_score_neg = 2 * ((precision_neg * recall_neg) / (precision_neg + recall_neg))
+
+accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
 print(num_tp, num_fp, num_tn, num_fn)
+print(num_tp, num_fp, num_tn, num_fn)
+
 print('%.3f %.3f %.3f %.3f' % (accuracy, precision, recall, f1_score))
-# 0.847 0.983 0.706 0.822
+# 0.802 0.950 0.637 0.762
+print('%.3f %.3f %.3f %.3f' % (accuracy, precision_neg, recall_neg, f1_score_neg))
+# 0.612 0.565 0.971 0.714
 
 # measure the performances
-score_labels = [int(round(score(model=model, vocab_size=vocab_size, max_length=max_length, sentence=sentence))) for sentence in test_data]
+# score_labels = [int(round(score(model=model, vocab_size=vocab_size, max_length=max_length, sentence=sentence))) for sentence in test_data]
+score_labels = [int(round(score(model=model, vocab_size=vocab_size, max_length=max_length, sentence=sentence))) for sentence in test_data_all]
 
 num_fp = sum([1 if test_labels[k]==0 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
 num_tp = sum([1 if test_labels[k]==1 and score_labels[k]==1 else 0 for k,v in enumerate(test_labels)])
@@ -103,11 +119,19 @@ num_fn = sum([1 if test_labels[k]==1 and score_labels[k]==0 else 0 for k,v in en
 precision = num_tp / (num_tp + num_fp)
 recall = num_tp / (num_tp + num_fn)
 f1_score = 2 * ((precision * recall) / (precision + recall))
-accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
 
+precision_neg = num_tn / (num_tn + num_fn)
+recall_neg = num_tn / (num_tn + num_fp)
+f1_score_neg = 2 * ((precision_neg * recall_neg) / (precision_neg + recall_neg))
+
+accuracy = (num_tp + num_tn) / (num_tp + num_fp + num_tn + num_fn)
 print(num_tp, num_fp, num_tn, num_fn)
+print(num_tp, num_fp, num_tn, num_fn)
+
 print('%.3f %.3f %.3f %.3f' % (accuracy, precision, recall, f1_score))
-# 0.847 0.983 0.706 0.822
+# 0.612 0.896 0.253 0.395
+print('%.3f %.3f %.3f %.3f' % (accuracy, precision_neg, recall_neg, f1_score_neg))
+# 0.612 0.565 0.971 0.714
 
 ### Create ROC/AOC Graph ###
 

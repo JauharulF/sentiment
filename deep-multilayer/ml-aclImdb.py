@@ -72,6 +72,7 @@ for paragraph in test_data:
 
 train_data_pad = keras.preprocessing.sequence.pad_sequences(train_data_pad, value=word_index["<PAD>"], padding='post', maxlen=256)
 test_data_pad = keras.preprocessing.sequence.pad_sequences(test_data_pad, value=word_index["<PAD>"], padding='post', maxlen=256)
+
 model = keras.Sequential()
 model.add(keras.layers.Embedding(vocab_size, 16))
 model.add(keras.layers.GlobalAveragePooling1D())

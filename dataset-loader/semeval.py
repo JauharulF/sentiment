@@ -1,61 +1,53 @@
+import glob
+import itertools
+
 dir_file = '../../SemEVAL/2017_English_final/GOLD/Subtask_A/'
 
-train_file = 'twitter-2013train-A.txt'
-dev_file   = 'twitter-2013dev-A.txt'
-test_file  = 'twitter-2013test-A.txt'
+# train_file = 'twitter-2013train-A.txt'
+# dev_file   = 'twitter-2013dev-A.txt'
+# test_file  = 'twitter-2013test-A.txt'
 
-train_13A, dev_13A, test_13A = [], [], []
+def get_raw_data(filename):
+    print(filename)
+    dataset = []
+    with open(filename, encoding='utf-8') as fin:
+        for row in fin:
+            line = row.split('\t')
+            data = {'id': line[0], 'label': line[1], 'text': line[2]}
+            dataset.append(data)
+    return dataset
 
-with open(dir_file+train_file, encoding='utf-8') as fin:
-    for row in fin:
-        line = row.split('\t')
-        data = {'id': line[0], 'label': line[1], 'text': line[2]}
-        train_13A.append(data)
+def get_text_data(raw_data, limit):
+    pos, neg = 0, 0
+    _data, _labels = [], []
+    for data in raw_data:
+        if data['label'] == 'positive' and pos<limit:
+            _data.append(data['text'])
+            _labels.append(1)
+            pos += 1
+        elif data['label'] == 'negative' and neg<limit:
+            _data.append(data['text'])
+            _labels.append(0)
+            neg += 1
+    return (_data, _labels)
 
-with open(dir_file+dev_file, encoding='utf-8') as fin:
-    for row in fin:
-        line = row.split('\t')
-        data = {'id': line[0], 'label': line[1], 'text': line[2]}
-        dev_13A.append(data)
+def get_all_data(raw_data):
+    _data, _labels = [], []
+    for data in raw_data:
+        if data['label'] == 'positive':
+            _data.append(data['text'])
+            _labels.append(1)
+        elif data['label'] == 'negative':
+            _data.append(data['text'])
+            _labels.append(0)
+    return (_data, _labels)
 
-with open(dir_file+test_file, encoding='utf-8') as fin:
-    for row in fin:
-        line = row.split('\t')
-        data = {'id': line[0], 'label': line[1], 'text': line[2]}
-        test_13A.append(data)
 
-pos, neg, limit = 0, 0, 1000
-train_data, train_labels = [], []
-for data in train_13A:
-    if data['label'] == 'positive' and pos<limit:
-        train_data.append(data['text'])
-        train_labels.append(1)
-        pos += 1
-    elif data['label'] == 'negative' and neg<limit:
-        train_data.append(data['text'])
-        train_labels.append(0)
-        neg += 1
+files = glob.glob(dir_file + 'twitter*.txt')
+train_raw = list(itertools.chain.from_iterable([get_raw_data(fname) for fname in files]))
+test_raw = get_raw_data(dir_file + 'gold/SemEval2017-task4-test.subtask-A.english.txt')
 
-pos, neg, limit = 0, 0, 300
-dev_data, dev_labels = [], []
-for data in dev_13A:
-    if data['label'] == 'positive' and pos<limit:
-        dev_data.append(data['text'])
-        dev_labels.append(1)
-        pos += 1
-    elif data['label'] == 'negative' and neg<limit:
-        dev_data.append(data['text'])
-        dev_labels.append(0)
-        neg += 1
-
-pos, neg, limit = 0, 0, 500
-test_data, test_labels = [], []
-for data in test_13A:
-    if data['label'] == 'positive' and pos<limit:
-        test_data.append(data['text'])
-        test_labels.append(1)
-        pos += 1
-    elif data['label'] == 'negative' and neg<limit:
-        test_data.append(data['text'])
-        test_labels.append(0)
-        neg += 1
+train_data, train_labels = get_text_data(train_raw, limit=7500)
+test_data, test_labels = get_text_data(test_raw, limit=2000)
+train_data_all, train_labels_all = get_all_data(train_raw)
+test_data_all, test_labels_all = get_all_data(test_raw)
