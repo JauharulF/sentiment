@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -22,10 +22,10 @@ class EmbeddingsExtractor(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def sequences_to_fixed_length(X, length):
-        Xs = numpy.zeros((X.size, length), dtype='int32')
+        Xs = np.zeros((X.size, length), dtype='int32')
         for i, x in enumerate(X):
             if x.size < length:
-                Xs[i] = numpy.pad(x, (0, length - len(x) % length), 'constant')
+                Xs[i] = np.pad(x, (0, length - len(x) % length), 'constant')
             elif x.size > length:
                 Xs[i] = x[0:length]
         return Xs
@@ -33,7 +33,7 @@ class EmbeddingsExtractor(BaseEstimator, TransformerMixin):
     def get_fixed_size_topic(self, X, max_length):
         X = list(X)
 
-        Xs = numpy.zeros((len(X), max_length), dtype='int32')
+        Xs = np.zeros((len(X), max_length), dtype='int32')
         for i, doc in enumerate(X):
             Xs[i, 0] = self.word_indices.get("<s>", 0)
             for j, token in enumerate(doc[:max_length]):
@@ -79,8 +79,8 @@ class EmbeddingsExtractor(BaseEstimator, TransformerMixin):
         """
         Xs = []
         for sent in X:
-            Xs.append(numpy.asarray(self.index_text(sent, add_tokens=add_tokens)))
-        return numpy.asarray(Xs)
+            Xs.append(np.asarray(self.index_text(sent, add_tokens=add_tokens)))
+        return np.asarray(Xs)
 
     def index_text_list(self, texts, length, add_tokens):
         """
