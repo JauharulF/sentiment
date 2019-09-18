@@ -5,7 +5,7 @@
 #    pip-compile --upgrade
 #
 langid==1.1.6
-nltk==3.4
+nltk>=3.4.5
 numpy==1.16.2             # via langid
 regex==2019.3.12
 singledispatch==3.4.0.3   # via nltk
